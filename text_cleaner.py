@@ -1,6 +1,27 @@
 # text_cleaner.py
 import re
 from typing import List
+# Optional synonym enhancement step
+try:
+    from synonym_replacer import replace_synonyms_in_sentence, ACADEMIC_WHITELIST
+except ImportError:
+    replace_synonyms_in_sentence = None
+    ACADEMIC_WHITELIST = []
+
+def replace_with_synonyms(text: str, p_replace: float = 0.3) -> str:
+    """
+    Replace words with more academic or context-appropriate synonyms.
+    Uses a probabilistic replacement (default: 30%) to preserve flow.
+    """
+    if not replace_synonyms_in_sentence:
+        return text  # fallback if synonym module not available
+
+    sentences = re.split(r'(?<=[.!?])\s+', text)
+    enhanced = [
+        replace_synonyms_in_sentence(s, p_replace=p_replace, whitelist=ACADEMIC_WHITELIST)
+        for s in sentences
+    ]
+    return " ".join(enhanced)
 
 try:
     import language_tool_python
@@ -102,8 +123,13 @@ def basic_punctuation_cleanup(text: str) -> str:
 
 def clean_text_pipeline(text: str) -> str:
     """
-    Full cleaning pipeline: remove/reduce redundant transitions, then grammar cleanup.
+    Full cleaning pipeline:
+    1. Replace with synonyms (humanize style)
+    2. Remove redundant transitions
+    3. Grammar cleanup
     """
+    text = replace_with_synonyms(text, p_replace=0.3)
     text = limit_transitions_in_text(text, max_per_paragraph=2)
     text = grammar_cleanup(text)
     return text
+
